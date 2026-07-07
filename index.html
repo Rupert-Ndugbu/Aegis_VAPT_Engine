@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html class="dark">
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AEGIS VAPT ENGINE</title>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 md:p-10">
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-4xl font-extrabold text-blue-500 mb-8 text-center">AEGIS VAPT ENGINE</h1>
+        
+        <!-- Login Card -->
+        <div id="login_card" class="bg-gray-800 p-6 rounded-xl border-l-4 border-blue-500 shadow-xl">
+            <h2 class="text-xl mb-4 text-center">System Authentication</h2>
+            <input id="user_id" placeholder="User ID" class="bg-gray-700 p-3 w-full mb-4 rounded border border-gray-600 outline-none">
+            <div class="relative mb-6">
+                <input id="password" type="password" placeholder="Password" class="bg-gray-700 p-3 w-full rounded border border-gray-600 outline-none">
+                <button type="button" id="toggleBtn" onclick="togglePassword()" class="absolute right-3 top-3 text-sm text-blue-400 hover:text-blue-300">Show</button>
+            </div>
+            <button onclick="authenticate()" class="bg-blue-600 w-full py-3 rounded font-bold hover:bg-blue-700 transition">LOGIN</button>
+        </div>
+
+        <!-- Scan Card -->
+        <div id="scan_card" class="hidden bg-gray-800 p-6 rounded-xl border-l-4 border-green-500 shadow-xl">
+            <h2 class="text-xl mb-4 text-green-400">Scanner Ready</h2>
+            <input id="target" placeholder="Enter Target IP Address" class="bg-gray-700 p-3 w-full mb-4 rounded border border-gray-600 outline-none">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <select id="mode" onchange="checkMode()" class="bg-gray-700 p-3 rounded border border-gray-600 outline-none">
+                    <option value="1-1000">Quick Scan (Top 1000)</option>
+                    <option value="1-65535">Full Scan (All Ports)</option>
+                    <option value="custom">Custom Ports</option>
+                </select>
+                <input id="custom_ports" placeholder="e.g. 80,443" class="bg-gray-700 p-3 rounded border border-gray-600 hidden outline-none">
+            </div>
+            <button onclick="startScan()" class="bg-red-600 w-full py-3 rounded font-bold hover:bg-red-700 transition">SCAN</button>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader" class="hidden mt-6 text-center text-yellow-500 font-semibold animate-pulse">
+            Processing... Aegis is analyzing the target. Please wait.
+        </div>
+
+        <!-- Results Table -->
+        <div id="results_container" class="mt-8 bg-gray-800 p-4 rounded-xl hidden">
+            <h3 class="text-lg font-bold mb-4 text-blue-400">Vulnerability Findings</h3>
+            <table class="w-full text-left text-sm">
+                <thead><tr class="border-b border-gray-700"><th class="p-2">ID</th><th class="p-2">Severity</th><th class="p-2">Score</th><th class="p-2">Description</th></tr></thead>
+                <tbody id="results_body"></tbody>
+            </table>
+            <!-- Added PDF Button -->
+            <button onclick="window.location.href='/api/v1/export-pdf/' + document.getElementById('target').value" class="mt-6 bg-blue-600 w-full py-2 rounded font-bold hover:bg-blue-500 transition">
+                Export Report as PDF
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const pass = document.getElementById('password');
+            const btn = document.getElementById('toggleBtn');
+            pass.type = (pass.type === "password") ? "text" : "password";
+            btn.innerText = (pass.type === "text") ? "Hide" : "Show";
+        }
+
+        function authenticate() {
+            if (document.getElementById('password').value === 'admin') {
+                document.getElementById('login_card').style.display = 'none';
+                document.getElementById('scan_card').classList.remove('hidden');
+            } else {
+                alert("Invalid Credentials");
+            }
+        }
+
+        function checkMode() {
+            const mode = document.getElementById('mode').value;
+            const customInput = document.getElementById('custom_ports');
+            customInput.classList.toggle('hidden', mode !== 'custom');
+        }
+
+        async function startScan() {
+            const target = document.getElementById('target').value;
+            const mode = document.getElementById('mode').value;
+            const customPorts = document.getElementById('custom_ports').value;
+            const portSelection = (mode === 'custom') ? customPorts : mode;
+            document.getElementById('loader').classList.remove('hidden');
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('target', target);
+                formData.append('port_selection', portSelection);
+                const response = await fetch('/api/v1/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+                const data = await response.json();
+                document.getElementById('loader').classList.add('hidden');
+                
+                if (data.results && data.results.length > 0) {
+                    const resultsBody = document.getElementById('results_body');
+                    document.getElementById('results_container').classList.remove('hidden');
+                    resultsBody.innerHTML = data.results.map(item => `
+                        <tr class="border-b border-gray-700">
+                            <td class="p-2">${item.id}</td>
+                            <td class="p-2">${item.severity}</td>
+                            <td class="p-2">${item.score}</td>
+                            <td class="p-2">${item.description.substring(0, 50)}...</td>
+                        </tr>`).join('');
+                } else {
+                    alert("Scan complete: No vulnerabilities found.");
+                }
+            } catch (error) {
+                document.getElementById('loader').classList.add('hidden');
+                alert("Scan request failed.");
+            }
+        }
+    </script>
+</body>
+</html>
