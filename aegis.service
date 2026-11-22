@@ -1,0 +1,13 @@
+[Unit]
+Description=Aegis VAPT Engine Platform
+After=network.target postgresql.service
+
+[Service]
+User=kali
+WorkingDirectory=/home/kali/aegis_project
+Environment="DATABASE_URL=postgresql://aegis_user:AegisVAPT123@localhost:5432/aegis_db"
+ExecStart=/home/kali/aegis_project/venv/bin/python /home/kali/aegis_project/start.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

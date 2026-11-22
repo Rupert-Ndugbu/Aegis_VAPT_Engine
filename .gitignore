@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.nicegui/
+*.db
+*.sqlite3
+users.json
+users.json.bak
+scans.json
+config.json
+app/reports/
+*.bak
+*.bak2
+.env

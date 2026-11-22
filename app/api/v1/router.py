@@ -3,7 +3,7 @@ import io
 from fastapi import APIRouter, Form, Header, HTTPException, Response
 from weasyprint import HTML
 from app.core.database import SessionLocal
-from app.services.scanner import run_nmap_scan, get_cve_data
+from scanner import scan_target, analyze_results
 from app.services.reporter import trigger_alerts_and_reports
 from app.models.scan_results import ScanResult
 
@@ -11,14 +11,15 @@ router = APIRouter()
 
 def perform_scan_task(target: str, port_selection: str):
     # 1. Run Synchronous Nmap Scan
-    scan_output = run_nmap_scan(target, port_selection=port_selection)
+    raw_scan = scan_target(target, ports=port_selection)
+    scan_output = analyze_results(raw_scan)
     
     # 2. Run Async services via a dedicated event loop wrapper
     async def run_services():
         try:
-            cve_report = await get_cve_data(scan_output)
+            cve_report = scan_output
         except TypeError:
-            cve_report = get_cve_data(scan_output)
+            cve_report = scan_output
             
         await trigger_alerts_and_reports(target, cve_report)
         return cve_report
